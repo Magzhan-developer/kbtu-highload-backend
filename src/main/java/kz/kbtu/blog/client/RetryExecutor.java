@@ -60,6 +60,10 @@ public final class RetryExecutor {
                     throw e;
                 }
                 sleeper.sleep(backoff);
+                // A thread can wake late. Another attempt would then have no time left to run in.
+                if (!remaining(deadlineNanos).isPositive()) {
+                    throw e;
+                }
             }
         }
     }

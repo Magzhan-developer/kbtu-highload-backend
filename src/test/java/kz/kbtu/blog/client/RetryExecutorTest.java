@@ -139,6 +139,24 @@ class RetryExecutorTest {
     }
 
     @Test
+    void sleepThatOverrunsTheDeadlineEndsWithTheRealFailureInsteadOfANonPositiveTimeout() {
+        RetryPolicy policy = new RetryPolicy(5, Duration.ofMillis(500), Duration.ofMillis(600),
+                Duration.ofMillis(50), Duration.ofMillis(50));
+        RetryExecutor executor = new RetryExecutor(policy, () -> nowNanos, duration -> {
+            // An operating system may wake a sleeping thread late.
+            nowNanos += Duration.ofMillis(200).toNanos();
+        }, () -> 1.0);
+
+        assertThatThrownBy(() -> executor.execute(timeout -> {
+            timeouts.add(timeout);
+            nowNanos += Duration.ofMillis(500).toNanos();
+            throw new Transient();
+        }, e -> true)).isInstanceOf(Transient.class);
+
+        assertThat(timeouts).allSatisfy(timeout -> assertThat(timeout).isPositive());
+    }
+
+    @Test
     void policyNeedsAtLeastOneAttempt() {
         assertThatThrownBy(() -> new RetryPolicy(0, Duration.ZERO, Duration.ZERO, Duration.ZERO, Duration.ZERO))
                 .isInstanceOf(IllegalArgumentException.class);

@@ -138,6 +138,10 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <!-- Lets -Dloader.main start the benchmark from the same jar. -->
+                    <layout>ZIP</layout>
+                </configuration>
             </plugin>
         </plugins>
     </build>

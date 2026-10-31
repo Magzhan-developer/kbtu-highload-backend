@@ -9,6 +9,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.atomic.LongAdder;
 
 public final class RestBlogClient implements BlogClient {
 
@@ -34,6 +35,7 @@ public final class RestBlogClient implements BlogClient {
     private final ObjectMapper mapper = new ObjectMapper();
     private final String baseUrl;
     private final RetryExecutor retries;
+    private final LongAdder attempts = new LongAdder();
 
     public RestBlogClient(String baseUrl, RetryPolicy policy) {
         // HTTP/1.1 keep-alive: concurrent calls each need their own pooled connection.
@@ -70,6 +72,11 @@ public final class RestBlogClient implements BlogClient {
     }
 
     @Override
+    public long attemptCount() {
+        return attempts.sum();
+    }
+
+    @Override
     public void close() {
         http.shutdownNow();
     }
@@ -92,6 +99,7 @@ public final class RestBlogClient implements BlogClient {
     }
 
     private byte[] attempt(HttpRequest.Builder request, Duration timeout) throws Exception {
+        attempts.increment();
         HttpResponse<byte[]> response = http.send(
                 request.copy().timeout(timeout).build(), HttpResponse.BodyHandlers.ofByteArray());
         if (response.statusCode() >= 400) {

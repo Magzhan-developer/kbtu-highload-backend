@@ -1,0 +1,5 @@
+format,payload,bytes,serialize_micros,parse_micros
+JSON,1 post,1211,4.97,5.11
+Protobuf,1 post,1085,1.36,1.24
+JSON,20 posts,23128,96.54,67.43
+Protobuf,20 posts,21083,24.82,8.52

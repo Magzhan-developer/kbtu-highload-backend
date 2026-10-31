@@ -4,6 +4,8 @@ name: blog-platform
 services:
   postgres:
     image: postgres:17-alpine
+    # The default 128 MB cache is far smaller than the benchmark dataset.
+    command: ["postgres", "-c", "shared_buffers=512MB"]
     environment:
       POSTGRES_DB: blog
       POSTGRES_USER: blog

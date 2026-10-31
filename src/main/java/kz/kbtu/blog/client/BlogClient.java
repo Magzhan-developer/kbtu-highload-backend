@@ -17,6 +17,9 @@ public interface BlogClient extends AutoCloseable {
 
     CallResult getComments(long postId, int limit) throws Exception;
 
+    /** Total attempts so far, including retries. */
+    long attemptCount();
+
     @Override
     void close();
 }

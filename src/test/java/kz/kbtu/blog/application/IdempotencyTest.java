@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Map;
+import java.util.UUID;
 import kz.kbtu.blog.AbstractIntegrationTest;
 import kz.kbtu.blog.domain.exception.IdempotencyConflictException;
 import kz.kbtu.blog.domain.exception.InvalidInputException;
@@ -13,6 +14,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.IllegalTransactionStateException;
 
 class IdempotencyTest extends AbstractIntegrationTest {
 
@@ -21,6 +23,9 @@ class IdempotencyTest extends AbstractIntegrationTest {
 
     @Autowired
     CommentService commentService;
+
+    @Autowired
+    IdempotencyService idempotency;
 
     @Test
     void sameKeyAndPayloadCreatesOnePostAndReturnsTheOriginalResult() {
@@ -128,6 +133,14 @@ class IdempotencyTest extends AbstractIntegrationTest {
 
         assertThat(count("idempotency_records")).isZero();
         assertThat(count("comments")).isZero();
+    }
+
+    @Test
+    void idempotencyServiceRefusesToRunOutsideATransaction() {
+        assertThatThrownBy(() -> idempotency.execute(ALICE, OperationType.CREATE_POST, UUID.randomUUID(), "hash",
+                String.class, () -> "result"))
+                .isInstanceOf(IllegalTransactionStateException.class);
+        assertThat(count("idempotency_records")).isZero();
     }
 
     @ParameterizedTest

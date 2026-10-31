@@ -21,7 +21,7 @@ public abstract class AbstractIntegrationTest {
     protected static final long UNKNOWN_ID = 999_999_999L;
 
     @ServiceConnection
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17-alpine");
+    protected static final PostgreSQLContainer<?> POSTGRES =new PostgreSQLContainer<>("postgres:17-alpine");
 
     static {
         POSTGRES.start();

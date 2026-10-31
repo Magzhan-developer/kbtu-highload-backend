@@ -9,5 +9,8 @@ target/
 # Local configuration
 .env
 
+# Benchmark journal of in-flight writes (not a result)
+benchmark-results/**/pending-operations.log
+
 # Maven wrapper binary (downloaded on demand)
 .mvn/wrapper/maven-wrapper.jar

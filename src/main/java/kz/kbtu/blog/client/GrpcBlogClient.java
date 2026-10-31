@@ -10,6 +10,7 @@ import io.grpc.stub.MetadataUtils;
 import java.time.Duration;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
 import kz.kbtu.blog.grpc.v1.BlogServiceGrpc;
 import kz.kbtu.blog.grpc.v1.BlogServiceGrpc.BlogServiceBlockingStub;
@@ -34,6 +35,7 @@ public final class GrpcBlogClient implements BlogClient {
     private final ManagedChannel channel;
     private final BlogServiceBlockingStub stub;
     private final RetryExecutor retries;
+    private final LongAdder attempts = new LongAdder();
 
     public GrpcBlogClient(String host, int port, RetryPolicy policy) {
         // One channel is one HTTP/2 connection: all concurrent calls are multiplexed over it.
@@ -88,8 +90,16 @@ public final class GrpcBlogClient implements BlogClient {
         channel.shutdownNow();
     }
 
+    @Override
+    public long attemptCount() {
+        return attempts.sum();
+    }
+
     private <T> T call(Function<Duration, T> attempt) throws Exception {
-        return retries.execute(attempt::apply, GrpcBlogClient::isRetryable);
+        return retries.execute(timeout -> {
+            attempts.increment();
+            return attempt.apply(timeout);
+        }, GrpcBlogClient::isRetryable);
     }
 
     private static boolean isRetryable(Exception e) {
