@@ -29,7 +29,7 @@ class PostServiceTest extends AbstractIntegrationTest {
 
     @Test
     void createdPostCanBeRetrievedWithIdenticalValues() {
-        PostView created = postService.create(ALICE, "Title", "Content");
+        PostView created = postService.create(ALICE, newKey(), "Title", "Content");
 
         assertThat(created.authorId()).isEqualTo(ALICE);
         assertThat(created.updatedAt()).isEqualTo(created.createdAt());
@@ -39,7 +39,7 @@ class PostServiceTest extends AbstractIntegrationTest {
 
     @Test
     void unicodeContentIsPreserved() {
-        PostView created = postService.create(ALICE, "Қазақша 日本語", "Сәлем 🌍");
+        PostView created = postService.create(ALICE, newKey(), "Қазақша 日本語", "Сәлем 🌍");
 
         assertThat(postService.get(created.id()).title()).isEqualTo("Қазақша 日本語");
         assertThat(postService.get(created.id()).content()).isEqualTo("Сәлем 🌍");
@@ -53,21 +53,21 @@ class PostServiceTest extends AbstractIntegrationTest {
 
     @Test
     void invalidInputIsRejected() {
-        assertThatThrownBy(() -> postService.create(ALICE, " ", "Content"))
+        assertThatThrownBy(() -> postService.create(ALICE, newKey(), " ", "Content"))
                 .isInstanceOf(InvalidInputException.class);
-        assertThatThrownBy(() -> postService.create(ALICE, null, "Content"))
+        assertThatThrownBy(() -> postService.create(ALICE, newKey(), null, "Content"))
                 .isInstanceOf(InvalidInputException.class);
-        assertThatThrownBy(() -> postService.create(ALICE, "x".repeat(InputRules.TITLE_MAX + 1), "Content"))
+        assertThatThrownBy(() -> postService.create(ALICE, newKey(), "x".repeat(InputRules.TITLE_MAX + 1), "Content"))
                 .isInstanceOf(InvalidInputException.class);
-        assertThatThrownBy(() -> postService.create(ALICE, "Title", "x".repeat(InputRules.POST_CONTENT_MAX + 1)))
+        assertThatThrownBy(() -> postService.create(ALICE, newKey(), "Title", "x".repeat(InputRules.POST_CONTENT_MAX + 1)))
                 .isInstanceOf(InvalidInputException.class);
-        assertThatThrownBy(() -> postService.create(ALICE, "Title", "bad\0content"))
+        assertThatThrownBy(() -> postService.create(ALICE, newKey(), "Title", "bad\0content"))
                 .isInstanceOf(InvalidInputException.class);
     }
 
     @Test
     void valuesAtTheLengthLimitsAreAccepted() {
-        PostView created = postService.create(ALICE,
+        PostView created = postService.create(ALICE, newKey(),
                 "x".repeat(InputRules.TITLE_MAX), "x".repeat(InputRules.POST_CONTENT_MAX));
 
         assertThat(created.id()).isPositive();
@@ -75,13 +75,13 @@ class PostServiceTest extends AbstractIntegrationTest {
 
     @Test
     void unknownUserCannotCreateAPost() {
-        assertThatThrownBy(() -> postService.create(UNKNOWN_USER, "Title", "Content"))
+        assertThatThrownBy(() -> postService.create(UNKNOWN_USER, newKey(), "Title", "Content"))
                 .isInstanceOf(UnauthenticatedException.class);
     }
 
     @Test
     void authorCanUpdateAPost() throws InterruptedException {
-        PostView created = postService.create(ALICE, "Title", "Content");
+        PostView created = postService.create(ALICE, newKey(), "Title", "Content");
         Thread.sleep(2);
 
         PostView updated = postService.update(ALICE, created.id(), "New title", "New content");
@@ -95,7 +95,7 @@ class PostServiceTest extends AbstractIntegrationTest {
 
     @Test
     void onlyTheAuthorCanUpdateOrDeleteAPost() {
-        PostView created = postService.create(ALICE, "Title", "Content");
+        PostView created = postService.create(ALICE, newKey(), "Title", "Content");
 
         assertThatThrownBy(() -> postService.update(BOB, created.id(), "Hacked", "Hacked"))
                 .isInstanceOf(PermissionDeniedException.class);
@@ -114,8 +114,8 @@ class PostServiceTest extends AbstractIntegrationTest {
 
     @Test
     void deletingAPostAlsoDeletesItsComments() {
-        PostView post = postService.create(ALICE, "Title", "Content");
-        commentService.create(BOB, post.id(), "Comment");
+        PostView post = postService.create(ALICE, newKey(), "Title", "Content");
+        commentService.create(BOB, newKey(), post.id(), "Comment");
 
         postService.delete(ALICE, post.id());
 
@@ -128,9 +128,9 @@ class PostServiceTest extends AbstractIntegrationTest {
     void authorFeedWalksEveryPostExactlyOnceNewestFirst() {
         List<Long> expected = new ArrayList<>();
         for (int i = 0; i < 7; i++) {
-            expected.add(0, postService.create(ALICE, "Post " + i, "Content").id());
+            expected.add(0, postService.create(ALICE, newKey(), "Post " + i, "Content").id());
         }
-        postService.create(BOB, "Other author", "Content");
+        postService.create(BOB, newKey(), "Other author", "Content");
 
         assertThat(readWholeFeed(ALICE, 3)).isEqualTo(expected);
     }
@@ -149,8 +149,8 @@ class PostServiceTest extends AbstractIntegrationTest {
 
     @Test
     void lastPageHasNoCursorWhenPostCountEqualsPageSize() {
-        postService.create(ALICE, "One", "Content");
-        postService.create(ALICE, "Two", "Content");
+        postService.create(ALICE, newKey(), "One", "Content");
+        postService.create(ALICE, newKey(), "Two", "Content");
 
         CursorPage<PostView> page = postService.listByAuthor(ALICE, 2, null);
 
@@ -161,7 +161,7 @@ class PostServiceTest extends AbstractIntegrationTest {
     @Test
     void feedUsesDefaultLimitWhenNotSet() {
         for (int i = 0; i < CursorPage.DEFAULT_LIMIT + 1; i++) {
-            postService.create(ALICE, "Post " + i, "Content");
+            postService.create(ALICE, newKey(), "Post " + i, "Content");
         }
 
         assertThat(postService.listByAuthor(ALICE, 0, null).items()).hasSize(CursorPage.DEFAULT_LIMIT);
@@ -183,7 +183,7 @@ class PostServiceTest extends AbstractIntegrationTest {
 
     @Test
     void cursorWithTheLargestAllowedTimestampDoesNotReachPostgresAsAnError() {
-        postService.create(ALICE, "Post", "Content");
+        postService.create(ALICE, newKey(), "Post", "Content");
         String farFuture = new Cursor(Instant.EPOCH.plusSeconds(Long.MAX_VALUE / 1_000_000), Long.MAX_VALUE).encode();
 
         assertThat(postService.listByAuthor(ALICE, 10, farFuture).items()).hasSize(1);

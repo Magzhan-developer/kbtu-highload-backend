@@ -1,3 +1,9 @@
+grpc:
+  server:
+    port: ${GRPC_PORT:9090}
+    # Matches Tomcat's default of 200 worker threads, so neither protocol has an advantage.
+    threads: ${GRPC_THREADS:200}
+
 spring:
   application:
     name: blog-platform
@@ -7,6 +13,9 @@ spring:
     password: ${DB_PASSWORD:blog}
     hikari:
       maximum-pool-size: ${DB_POOL_SIZE:32}
+      # Fail fast when the database is down. The default of 30 s holds a request
+      # thread long after the client has given up.
+      connection-timeout: ${DB_CONNECTION_TIMEOUT_MS:2000}
   jpa:
     open-in-view: false
     hibernate:

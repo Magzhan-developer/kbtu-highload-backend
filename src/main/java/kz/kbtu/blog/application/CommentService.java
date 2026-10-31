@@ -1,6 +1,7 @@
 package kz.kbtu.blog.application;
 
 import java.util.List;
+import java.util.UUID;
 import kz.kbtu.blog.domain.Comment;
 import kz.kbtu.blog.domain.exception.PermissionDeniedException;
 import kz.kbtu.blog.domain.exception.ResourceNotFoundException;
@@ -8,6 +9,7 @@ import kz.kbtu.blog.persistence.CommentRepository;
 import kz.kbtu.blog.persistence.PostRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -16,22 +18,34 @@ public class CommentService {
     private final CommentRepository comments;
     private final PostRepository posts;
     private final ActorGuard actors;
+    private final IdempotencyService idempotency;
 
-    public CommentService(CommentRepository comments, PostRepository posts, ActorGuard actors) {
+    public CommentService(
+            CommentRepository comments, PostRepository posts, ActorGuard actors, IdempotencyService idempotency) {
         this.comments = comments;
         this.posts = posts;
         this.actors = actors;
+        this.idempotency = idempotency;
     }
 
-    @Transactional
-    public CommentView create(long userId, long postId, String content) {
+    // READ COMMITTED is required by IdempotencyService.replay, so it is stated explicitly.
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public CommentView create(long userId, String idempotencyKey, long postId, String content) {
         InputRules.requireCommentContent(content);
+        UUID key = InputRules.requireIdempotencyKey(idempotencyKey);
         actors.requireKnownUser(userId);
+        String requestHash = RequestHash.of(String.valueOf(postId), content);
+        return idempotency.execute(
+                userId, OperationType.CREATE_COMMENT, key, requestHash, CommentView.class,
+                () -> insertComment(userId, postId, content));
+    }
+
+    private CommentView insertComment(long userId, long postId, String content) {
         try {
             return CommentView.from(comments.save(new Comment(postId, userId, content, Timestamps.now())));
         } catch (DataIntegrityViolationException e) {
             // The foreign key is the check, so a post deleted at this moment is also caught.
-            // The user was verified above, which leaves the post as the missing reference.
+            // The user was verified earlier, which leaves the post as the missing reference.
             throw new ResourceNotFoundException("post " + postId + " not found");
         }
     }

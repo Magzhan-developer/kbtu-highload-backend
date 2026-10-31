@@ -1,12 +1,14 @@
 package kz.kbtu.blog.application;
 
 import java.util.List;
+import java.util.UUID;
 import kz.kbtu.blog.domain.Post;
 import kz.kbtu.blog.domain.exception.PermissionDeniedException;
 import kz.kbtu.blog.domain.exception.ResourceNotFoundException;
 import kz.kbtu.blog.persistence.PostRepository;
 import kz.kbtu.blog.persistence.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -15,19 +17,26 @@ public class PostService {
     private final PostRepository posts;
     private final UserRepository users;
     private final ActorGuard actors;
+    private final IdempotencyService idempotency;
 
-    public PostService(PostRepository posts, UserRepository users, ActorGuard actors) {
+    public PostService(
+            PostRepository posts, UserRepository users, ActorGuard actors, IdempotencyService idempotency) {
         this.posts = posts;
         this.users = users;
         this.actors = actors;
+        this.idempotency = idempotency;
     }
 
-    @Transactional
-    public PostView create(long authorId, String title, String content) {
+    // READ COMMITTED is required by IdempotencyService.replay, so it is stated explicitly.
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public PostView create(long authorId, String idempotencyKey, String title, String content) {
         InputRules.requireTitle(title);
         InputRules.requirePostContent(content);
+        UUID key = InputRules.requireIdempotencyKey(idempotencyKey);
         actors.requireKnownUser(authorId);
-        return PostView.from(posts.save(new Post(authorId, title, content, Timestamps.now())));
+        return idempotency.execute(
+                authorId, OperationType.CREATE_POST, key, RequestHash.of(title, content), PostView.class,
+                () -> PostView.from(posts.save(new Post(authorId, title, content, Timestamps.now()))));
     }
 
     @Transactional(readOnly = true)

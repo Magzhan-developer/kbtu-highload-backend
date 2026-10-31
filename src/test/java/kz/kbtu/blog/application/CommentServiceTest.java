@@ -26,12 +26,12 @@ class CommentServiceTest extends AbstractIntegrationTest {
 
     @BeforeEach
     void createPost() {
-        postId = postService.create(ALICE, "Title", "Content").id();
+        postId = postService.create(ALICE, newKey(), "Title", "Content").id();
     }
 
     @Test
     void createdCommentAppearsInThePostsComments() {
-        CommentView created = commentService.create(BOB, postId, "Nice post");
+        CommentView created = commentService.create(BOB, newKey(), postId, "Nice post");
 
         assertThat(created.postId()).isEqualTo(postId);
         assertThat(created.userId()).isEqualTo(BOB);
@@ -40,29 +40,29 @@ class CommentServiceTest extends AbstractIntegrationTest {
 
     @Test
     void commentsOfOtherPostsAreNotReturned() {
-        long otherPost = postService.create(ALICE, "Other", "Content").id();
-        commentService.create(BOB, otherPost, "Elsewhere");
+        long otherPost = postService.create(ALICE, newKey(), "Other", "Content").id();
+        commentService.create(BOB, newKey(), otherPost, "Elsewhere");
 
         assertThat(commentService.listByPost(postId, 10, null).items()).isEmpty();
     }
 
     @Test
     void commentingOnAMissingPostFailsAsNotFound() {
-        assertThatThrownBy(() -> commentService.create(BOB, UNKNOWN_ID, "Nice post"))
+        assertThatThrownBy(() -> commentService.create(BOB, newKey(), UNKNOWN_ID, "Nice post"))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
     @Test
     void unknownUserCannotComment() {
-        assertThatThrownBy(() -> commentService.create(UNKNOWN_USER, postId, "Nice post"))
+        assertThatThrownBy(() -> commentService.create(UNKNOWN_USER, newKey(), postId, "Nice post"))
                 .isInstanceOf(UnauthenticatedException.class);
     }
 
     @Test
     void invalidContentIsRejected() {
-        assertThatThrownBy(() -> commentService.create(BOB, postId, ""))
+        assertThatThrownBy(() -> commentService.create(BOB, newKey(), postId, ""))
                 .isInstanceOf(InvalidInputException.class);
-        assertThatThrownBy(() -> commentService.create(BOB, postId, "x".repeat(InputRules.COMMENT_CONTENT_MAX + 1)))
+        assertThatThrownBy(() -> commentService.create(BOB, newKey(), postId, "x".repeat(InputRules.COMMENT_CONTENT_MAX + 1)))
                 .isInstanceOf(InvalidInputException.class);
     }
 
@@ -70,7 +70,7 @@ class CommentServiceTest extends AbstractIntegrationTest {
     void commentPagesWalkEveryCommentExactlyOnceNewestFirst() {
         List<Long> expected = new ArrayList<>();
         for (int i = 0; i < 7; i++) {
-            expected.add(0, commentService.create(BOB, postId, "Comment " + i).id());
+            expected.add(0, commentService.create(BOB, newKey(), postId, "Comment " + i).id());
         }
 
         List<Long> actual = new ArrayList<>();
@@ -92,7 +92,7 @@ class CommentServiceTest extends AbstractIntegrationTest {
 
     @Test
     void authorCanUpdateAndDeleteAComment() {
-        CommentView created = commentService.create(BOB, postId, "Nice post");
+        CommentView created = commentService.create(BOB, newKey(), postId, "Nice post");
 
         CommentView updated = commentService.update(BOB, created.id(), "Edited");
 
@@ -106,7 +106,7 @@ class CommentServiceTest extends AbstractIntegrationTest {
 
     @Test
     void onlyTheCommentAuthorCanUpdateOrDeleteIt() {
-        CommentView created = commentService.create(BOB, postId, "Nice post");
+        CommentView created = commentService.create(BOB, newKey(), postId, "Nice post");
 
         // Alice owns the post, but comment moderation is not a requirement.
         assertThatThrownBy(() -> commentService.update(ALICE, created.id(), "Hacked"))
