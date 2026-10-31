@@ -1,0 +1,13 @@
+# Build output
+target/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Local configuration
+.env
+
+# Maven wrapper binary (downloaded on demand)
+.mvn/wrapper/maven-wrapper.jar

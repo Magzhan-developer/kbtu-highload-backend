@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: blog-platform
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/blog}
+    username: ${DB_USER:blog}
+    password: ${DB_PASSWORD:blog}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:32}
+  jpa:
+    open-in-view: false
+    hibernate:
+      # Flyway owns the schema. Hibernate only checks that entities match it.
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
