@@ -4,6 +4,26 @@ grpc:
     # Matches Tomcat's default of 200 worker threads, so neither protocol has an advantage.
     threads: ${GRPC_THREADS:200}
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: blog-platform
+    distribution:
+      # REST and gRPC use the same bucket settings, so their percentiles are comparable.
+      percentiles-histogram:
+        http.server.requests: true
+        grpc.server.requests: true
+      minimum-expected-value:
+        http.server.requests: 1ms
+        grpc.server.requests: 1ms
+      maximum-expected-value:
+        http.server.requests: 10s
+        grpc.server.requests: 10s
+
 spring:
   application:
     name: blog-platform

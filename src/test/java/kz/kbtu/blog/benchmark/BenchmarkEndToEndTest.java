@@ -44,7 +44,7 @@ class BenchmarkEndToEndTest extends AbstractIntegrationTest {
         }
 
         BenchmarkMain.runForTest(BenchmarkConfig.parse(
-                "--requests=" + REQUESTS, "--write-requests=" + REQUESTS, "--concurrency=2", "--warmup=4",
+                "--run-id=end-to-end", "--requests=" + REQUESTS, "--write-requests=" + REQUESTS, "--concurrency=2", "--warmup=4",
                 "--prewarm-passes=1", "--iterations=" + ITERATIONS, "--sample-size=5",
                 "--max-attempts=1", "--attempt-timeout-ms=5000", "--overall-timeout-ms=5000",
                 "--rest-url=http://localhost:" + restPort,
@@ -72,6 +72,8 @@ class BenchmarkEndToEndTest extends AbstractIntegrationTest {
         assertThat(Files.readAllLines(output.resolve("summary.csv"))).hasSize(1 + 2 * 5);
         assertThat(Files.readAllLines(output.resolve("serialization-probe.csv"))).hasSize(1 + 4);
         assertThat(Files.readString(output.resolve("pending-operations.log"))).isEmpty();
+        assertThat(Files.readString(output.resolve("run-metadata.json")))
+                .contains("\"run_id\" : \"end-to-end\"", "\"posts\" : 5", "\"comments\" : 5", "\"iterations\" : 2");
 
         assertThat(jdbc.queryForObject("SELECT count(*) FROM idempotency_records", Long.class))
                 .isGreaterThan((long) REQUESTS);

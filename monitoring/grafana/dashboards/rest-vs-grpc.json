@@ -1,0 +1,4820 @@
+{
+  "uid": "blog-rest-vs-grpc",
+  "title": "Blog Platform — REST vs gRPC Performance Benchmark",
+  "description": "Measured REST and gRPC results from benchmark-results, with live application and database metrics.",
+  "tags": [
+    "benchmark",
+    "grpc",
+    "rest",
+    "sis-2"
+  ],
+  "schemaVersion": 41,
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1,
+  "style": "dark",
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "refresh": "10s",
+  "timezone": "browser",
+  "annotations": {
+    "list": []
+  },
+  "links": [],
+  "templating": {
+    "list": [
+      {
+        "name": "run",
+        "label": "Run",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(benchmark_run_info, run_id)",
+          "refId": "run",
+          "qryType": 1
+        },
+        "definition": "label_values(benchmark_run_info, run_id)",
+        "refresh": 2,
+        "sort": 1,
+        "multi": true,
+        "includeAll": false,
+        "options": [],
+        "hide": 0,
+        "current": {
+          "selected": true,
+          "text": [
+            "run-2"
+          ],
+          "value": [
+            "run-2"
+          ]
+        }
+      },
+      {
+        "name": "concurrency",
+        "label": "Clients",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(benchmark_summary_throughput_rps, concurrency)",
+          "refId": "concurrency",
+          "qryType": 1
+        },
+        "definition": "label_values(benchmark_summary_throughput_rps, concurrency)",
+        "refresh": 2,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "options": [],
+        "hide": 0,
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        }
+      },
+      {
+        "name": "operation",
+        "label": "Operation",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(benchmark_summary_throughput_rps, operation)",
+          "refId": "operation",
+          "qryType": 1
+        },
+        "definition": "label_values(benchmark_summary_throughput_rps, operation)",
+        "refresh": 2,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "options": [],
+        "hide": 0,
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        }
+      },
+      {
+        "name": "protocol",
+        "label": "Protocol",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(benchmark_summary_throughput_rps, protocol)",
+          "refId": "protocol",
+          "qryType": 1
+        },
+        "definition": "label_values(benchmark_summary_throughput_rps, protocol)",
+        "refresh": 2,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "options": [],
+        "hide": 0,
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        }
+      },
+      {
+        "name": "focus_operation",
+        "label": "Focus operation",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(benchmark_summary_throughput_rps, operation)",
+          "refId": "focus_operation",
+          "qryType": 1
+        },
+        "definition": "label_values(benchmark_summary_throughput_rps, operation)",
+        "refresh": 2,
+        "sort": 1,
+        "multi": false,
+        "includeAll": false,
+        "options": [],
+        "hide": 0,
+        "current": {
+          "selected": true,
+          "text": "GetPost",
+          "value": "GetPost"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "A. Executive overview",
+      "collapsed": false,
+      "panels": [],
+      "id": 1,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "type": "text",
+      "title": "",
+      "transparent": true,
+      "options": {
+        "mode": "markdown",
+        "content": "### What this dashboard compares\nEvery benchmark value here comes from the CSV files in `benchmark-results/`. The two sides differ in **transport** (HTTP/2 multiplexed vs HTTP/1.1), **serialization** (Protobuf vs JSON) and **framework** (grpc-java on Netty vs Spring MVC on Tomcat). These results measure the combination, so a gap cannot be credited to Protobuf alone. Client, server and PostgreSQL shared one 8-core laptop, so this is not a capacity test."
+      },
+      "id": 2,
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 24,
+        "h": 4
+      }
+    },
+    {
+      "type": "table",
+      "title": "Benchmark runs (exact values from run-metadata.json)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "benchmark_run_info{run_id=~\"$run\"}",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "benchmark_run_posts{run_id=~\"$run\"}",
+          "refId": "B",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "benchmark_run_comments{run_id=~\"$run\"}",
+          "refId": "C",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "benchmark_run_users{run_id=~\"$run\"}",
+          "refId": "D",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "benchmark_run_read_requests{run_id=~\"$run\"}",
+          "refId": "E",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "benchmark_run_write_requests{run_id=~\"$run\"}",
+          "refId": "F",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "benchmark_run_warmup_requests{run_id=~\"$run\"}",
+          "refId": "G",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "benchmark_run_iterations{run_id=~\"$run\"}",
+          "refId": "H",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "run_id",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "pattern": "^(run_id|label|started_at|concurrency_levels|Value #[B-H])$"
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "indexByName": {
+              "run_id": 0,
+              "label": 1,
+              "started_at": 2,
+              "Value #B": 3,
+              "Value #C": 4,
+              "Value #D": 5,
+              "concurrency_levels": 6,
+              "Value #E": 7,
+              "Value #F": 8,
+              "Value #G": 9,
+              "Value #H": 10
+            },
+            "renameByName": {
+              "run_id": "Run",
+              "label": "Note",
+              "started_at": "Started (UTC)",
+              "concurrency_levels": "Clients",
+              "Value #B": "Posts",
+              "Value #C": "Comments",
+              "Value #D": "Users",
+              "Value #E": "Reads per run",
+              "Value #F": "Writes per run",
+              "Value #G": "Warm-up",
+              "Value #H": "Iterations"
+            }
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "locale",
+          "decimals": 0,
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Note"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 270
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Started (UTC)"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 250
+              }
+            ]
+          }
+        ]
+      },
+      "id": 3,
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 24,
+        "h": 5
+      }
+    },
+    {
+      "type": "stat",
+      "title": "REST throughput",
+      "description": "Mean of the median values for the selected runs, operations and client counts.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "avg(benchmark_summary_throughput_rps{run_id=~\"$run\",concurrency=~\"$concurrency\",operation=~\"$operation\",protocol=\"REST\"})",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: req/s",
+          "decimals": 0,
+          "noValue": "No data",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#FF9830"
+          }
+        },
+        "overrides": []
+      },
+      "id": 4,
+      "gridPos": {
+        "x": 0,
+        "y": 10,
+        "w": 4,
+        "h": 5
+      }
+    },
+    {
+      "type": "stat",
+      "title": "gRPC throughput",
+      "description": "Mean of the median values for the selected runs, operations and client counts.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "avg(benchmark_summary_throughput_rps{run_id=~\"$run\",concurrency=~\"$concurrency\",operation=~\"$operation\",protocol=\"gRPC\"})",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: req/s",
+          "decimals": 0,
+          "noValue": "No data",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#5794F2"
+          }
+        },
+        "overrides": []
+      },
+      "id": 5,
+      "gridPos": {
+        "x": 4,
+        "y": 10,
+        "w": 4,
+        "h": 5
+      }
+    },
+    {
+      "type": "stat",
+      "title": "REST p99 latency",
+      "description": "Mean of the median values for the selected runs, operations and client counts.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "avg(benchmark_summary_p99_ms{run_id=~\"$run\",concurrency=~\"$concurrency\",operation=~\"$operation\",protocol=\"REST\"})",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "decimals": 1,
+          "noValue": "No data",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#FF9830"
+          }
+        },
+        "overrides": []
+      },
+      "id": 6,
+      "gridPos": {
+        "x": 8,
+        "y": 10,
+        "w": 4,
+        "h": 5
+      }
+    },
+    {
+      "type": "stat",
+      "title": "gRPC p99 latency",
+      "description": "Mean of the median values for the selected runs, operations and client counts.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "avg(benchmark_summary_p99_ms{run_id=~\"$run\",concurrency=~\"$concurrency\",operation=~\"$operation\",protocol=\"gRPC\"})",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "decimals": 1,
+          "noValue": "No data",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#5794F2"
+          }
+        },
+        "overrides": []
+      },
+      "id": 7,
+      "gridPos": {
+        "x": 12,
+        "y": 10,
+        "w": 4,
+        "h": 5
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Throughput improvement",
+      "description": "gRPC relative to REST on the mean values shown beside this panel.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "100 * (avg(benchmark_summary_throughput_rps{run_id=~\"$run\",concurrency=~\"$concurrency\",operation=~\"$operation\",protocol=\"gRPC\"}) / avg(benchmark_summary_throughput_rps{run_id=~\"$run\",concurrency=~\"$concurrency\",operation=~\"$operation\",protocol=\"REST\"}) - 1)",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "noValue": "No data",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#73BF69"
+          }
+        },
+        "overrides": []
+      },
+      "id": 8,
+      "gridPos": {
+        "x": 16,
+        "y": 10,
+        "w": 4,
+        "h": 5
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Payload size reduction",
+      "description": "Response bodies only, not network traffic. Excludes headers and framing.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "100 * (1 - sum(benchmark_summary_response_bytes{run_id=~\"$run\",concurrency=~\"$concurrency\",operation=~\"$operation\",protocol=\"gRPC\"}) / sum(benchmark_summary_response_bytes{run_id=~\"$run\",concurrency=~\"$concurrency\",operation=~\"$operation\",protocol=\"REST\"}))",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "noValue": "No data",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#73BF69"
+          }
+        },
+        "overrides": []
+      },
+      "id": 9,
+      "gridPos": {
+        "x": 20,
+        "y": 10,
+        "w": 4,
+        "h": 5
+      }
+    },
+    {
+      "type": "row",
+      "title": "B. Throughput comparison",
+      "collapsed": false,
+      "panels": [],
+      "id": 10,
+      "gridPos": {
+        "x": 0,
+        "y": 15,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "type": "barchart",
+      "title": "Throughput by operation and client count",
+      "description": "Median across iterations.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_join(benchmark_summary_throughput_rps{run_id=~\"$run\",concurrency=~\"$concurrency\",operation=~\"$operation\",protocol=~\"$protocol\"}, \"series\", \" · \", \"scenario\", \"run_id\")",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "protocol",
+            "rowField": "series",
+            "valueField": "Value",
+            "emptyValue": "null"
+          }
+        }
+      ],
+      "options": {
+        "orientation": "vertical",
+        "xTickLabelRotation": -25,
+        "xTickLabelSpacing": 0,
+        "showValue": "auto",
+        "stacking": "none",
+        "groupWidth": 0.72,
+        "barWidth": 0.92,
+        "barRadius": 0.03,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: req/s",
+          "decimals": 0,
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "REST"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FF9830"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "gRPC"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794F2"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "id": 11,
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 24,
+        "h": 9
+      }
+    },
+    {
+      "type": "barchart",
+      "title": "16 clients vs 64 clients: $focus_operation",
+      "description": "Choose the operation with the Focus operation variable.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_join(benchmark_summary_throughput_rps{run_id=~\"$run\",concurrency=~\"$concurrency\",operation=\"$focus_operation\",protocol=~\"$protocol\"}, \"series\", \" · \", \"scenario\", \"run_id\")",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "protocol",
+            "rowField": "series",
+            "valueField": "Value",
+            "emptyValue": "null"
+          }
+        }
+      ],
+      "options": {
+        "orientation": "vertical",
+        "xTickLabelRotation": -25,
+        "xTickLabelSpacing": 0,
+        "showValue": "auto",
+        "stacking": "none",
+        "groupWidth": 0.72,
+        "barWidth": 0.92,
+        "barRadius": 0.03,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: req/s",
+          "decimals": 0,
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "REST"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FF9830"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "gRPC"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794F2"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "id": 12,
+      "gridPos": {
+        "x": 0,
+        "y": 25,
+        "w": 8,
+        "h": 9
+      }
+    },
+    {
+      "type": "barchart",
+      "title": "Every iteration: $focus_operation",
+      "description": "One bar per iteration. Compare the spread within a protocol with the gap between protocols.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_join(benchmark_iteration_throughput_rps{run_id=~\"$run\",concurrency=~\"$concurrency\",operation=\"$focus_operation\",protocol=~\"$protocol\"}, \"series\", \" · \", \"scenario\", \"iteration\", \"run_id\")",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "protocol",
+            "rowField": "series",
+            "valueField": "Value",
+            "emptyValue": "null"
+          }
+        }
+      ],
+      "options": {
+        "orientation": "vertical",
+        "xTickLabelRotation": -25,
+        "xTickLabelSpacing": 0,
+        "showValue": "auto",
+        "stacking": "none",
+        "groupWidth": 0.72,
+        "barWidth": 0.92,
+        "barRadius": 0.03,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: req/s",
+          "decimals": 0,
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "REST"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FF9830"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "gRPC"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794F2"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "id": 13,
+      "gridPos": {
+        "x": 8,
+        "y": 25,
+        "w": 16,
+        "h": 9
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Live requests per second (only while a benchmark or traffic is running)",
+      "description": "Measured on the server by Prometheus. Runs 1 and 2 predate this instrumentation and are not shown here.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/.*\"}[30s]))",
+          "refId": "A",
+          "legendFormat": "REST",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(grpc_server_requests_seconds_count[30s]))",
+          "refId": "B",
+          "legendFormat": "gRPC",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "REST"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FF9830"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "gRPC"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794F2"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "id": 14,
+      "gridPos": {
+        "x": 0,
+        "y": 34,
+        "w": 24,
+        "h": 8
+      }
+    },
+    {
+      "type": "barchart",
+      "title": "Throughput gain of gRPC over REST",
+      "description": "Positive favours gRPC. Compare across runs before trusting one bar.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_join(benchmark_comparison_throughput_gain_percent{run_id=~\"$run\",concurrency=~\"$concurrency\",operation=~\"$operation\"}, \"series\", \" · \", \"scenario\")",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "run_id",
+            "rowField": "series",
+            "valueField": "Value",
+            "emptyValue": "null"
+          }
+        }
+      ],
+      "options": {
+        "orientation": "vertical",
+        "xTickLabelRotation": -25,
+        "xTickLabelSpacing": 0,
+        "showValue": "auto",
+        "stacking": "none",
+        "groupWidth": 0.72,
+        "barWidth": 0.92,
+        "barRadius": 0.03,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0,
+            "axisCenteredZero": false,
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              },
+              {
+                "color": "text",
+                "value": 0
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 15,
+      "gridPos": {
+        "x": 0,
+        "y": 42,
+        "w": 24,
+        "h": 8
+      }
+    },
+    {
+      "type": "row",
+      "title": "C. Latency analysis",
+      "collapsed": false,
+      "panels": [],
+      "id": 16,
+      "gridPos": {
+        "x": 0,
+        "y": 50,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "type": "barchart",
+      "title": "p50 latency by operation",
+      "description": "Median across iterations. Lower is better.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_join(benchmark_summary_p50_ms{run_id=~\"$run\",concurrency=~\"$concurrency\",operation=~\"$operation\",protocol=~\"$protocol\"}, \"series\", \" · \", \"scenario\", \"run_id\")",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "protocol",
+            "rowField": "series",
+            "valueField": "Value",
+            "emptyValue": "null"
+          }
+        }
+      ],
+      "options": {
+        "orientation": "vertical",
+        "xTickLabelRotation": -25,
+        "xTickLabelSpacing": 0,
+        "showValue": "auto",
+        "stacking": "none",
+        "groupWidth": 0.72,
+        "barWidth": 0.92,
+        "barRadius": 0.03,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "decimals": 1,
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "REST"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FF9830"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "gRPC"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794F2"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "id": 17,
+      "gridPos": {
+        "x": 0,
+        "y": 51,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "barchart",
+      "title": "p95 latency by operation",
+      "description": "Median across iterations. Lower is better.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_join(benchmark_summary_p95_ms{run_id=~\"$run\",concurrency=~\"$concurrency\",operation=~\"$operation\",protocol=~\"$protocol\"}, \"series\", \" · \", \"scenario\", \"run_id\")",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "protocol",
+            "rowField": "series",
+            "valueField": "Value",
+            "emptyValue": "null"
+          }
+        }
+      ],
+      "options": {
+        "orientation": "vertical",
+        "xTickLabelRotation": -25,
+        "xTickLabelSpacing": 0,
+        "showValue": "auto",
+        "stacking": "none",
+        "groupWidth": 0.72,
+        "barWidth": 0.92,
+        "barRadius": 0.03,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "decimals": 1,
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "REST"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FF9830"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "gRPC"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794F2"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "id": 18,
+      "gridPos": {
+        "x": 12,
+        "y": 51,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "barchart",
+      "title": "p99 latency by operation",
+      "description": "Median across iterations. Lower is better.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_join(benchmark_summary_p99_ms{run_id=~\"$run\",concurrency=~\"$concurrency\",operation=~\"$operation\",protocol=~\"$protocol\"}, \"series\", \" · \", \"scenario\", \"run_id\")",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "protocol",
+            "rowField": "series",
+            "valueField": "Value",
+            "emptyValue": "null"
+          }
+        }
+      ],
+      "options": {
+        "orientation": "vertical",
+        "xTickLabelRotation": -25,
+        "xTickLabelSpacing": 0,
+        "showValue": "auto",
+        "stacking": "none",
+        "groupWidth": 0.72,
+        "barWidth": 0.92,
+        "barRadius": 0.03,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "decimals": 1,
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "REST"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FF9830"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "gRPC"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794F2"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "id": 19,
+      "gridPos": {
+        "x": 0,
+        "y": 59,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "barchart",
+      "title": "Latency reduction with gRPC (p50)",
+      "description": "Positive means gRPC is faster.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_join(benchmark_comparison_p50_reduction_percent{run_id=~\"$run\",concurrency=~\"$concurrency\",operation=~\"$operation\"}, \"series\", \" · \", \"scenario\")",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "run_id",
+            "rowField": "series",
+            "valueField": "Value",
+            "emptyValue": "null"
+          }
+        }
+      ],
+      "options": {
+        "orientation": "vertical",
+        "xTickLabelRotation": -25,
+        "xTickLabelSpacing": 0,
+        "showValue": "auto",
+        "stacking": "none",
+        "groupWidth": 0.72,
+        "barWidth": 0.92,
+        "barRadius": 0.03,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0,
+            "axisCenteredZero": false,
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              },
+              {
+                "color": "text",
+                "value": 0
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 20,
+      "gridPos": {
+        "x": 12,
+        "y": 59,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "barchart",
+      "title": "Latency reduction with gRPC (p99)",
+      "description": "Positive means gRPC is faster. Negative bars are real: p99 was mixed.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_join(benchmark_comparison_p99_reduction_percent{run_id=~\"$run\",concurrency=~\"$concurrency\",operation=~\"$operation\"}, \"series\", \" · \", \"scenario\")",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "run_id",
+            "rowField": "series",
+            "valueField": "Value",
+            "emptyValue": "null"
+          }
+        }
+      ],
+      "options": {
+        "orientation": "vertical",
+        "xTickLabelRotation": -25,
+        "xTickLabelSpacing": 0,
+        "showValue": "auto",
+        "stacking": "none",
+        "groupWidth": 0.72,
+        "barWidth": 0.92,
+        "barRadius": 0.03,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0,
+            "axisCenteredZero": false,
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              },
+              {
+                "color": "text",
+                "value": 0
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 21,
+      "gridPos": {
+        "x": 0,
+        "y": 67,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "text",
+      "title": "",
+      "transparent": true,
+      "options": {
+        "mode": "markdown",
+        "content": "### Latency distribution\n**Runs 1 and 2: unavailable.** The benchmark saved percentiles, not individual samples, so their distribution cannot be drawn. The percentile charts above show what was recorded.\n\n**New traffic:** the heatmaps below use server-side histograms and fill in while requests run."
+      },
+      "id": 22,
+      "gridPos": {
+        "x": 12,
+        "y": 67,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "heatmap",
+      "title": "Live REST latency distribution",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (le) (increase(http_server_requests_seconds_bucket{uri=~\"/api/.*\"}[30s]))",
+          "refId": "A",
+          "legendFormat": "{{le}}",
+          "instant": false,
+          "range": true,
+          "editorMode": "code",
+          "format": "heatmap"
+        }
+      ],
+      "options": {
+        "calculate": false,
+        "cellGap": 1,
+        "color": {
+          "scheme": "Spectral",
+          "mode": "scheme",
+          "steps": 64
+        },
+        "yAxis": {
+          "unit": "s"
+        },
+        "tooltip": {
+          "mode": "single",
+          "yHistogram": false
+        },
+        "legend": {
+          "show": true
+        }
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "id": 23,
+      "gridPos": {
+        "x": 0,
+        "y": 75,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "heatmap",
+      "title": "Live gRPC latency distribution",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (le) (increase(grpc_server_requests_seconds_bucket[30s]))",
+          "refId": "A",
+          "legendFormat": "{{le}}",
+          "instant": false,
+          "range": true,
+          "editorMode": "code",
+          "format": "heatmap"
+        }
+      ],
+      "options": {
+        "calculate": false,
+        "cellGap": 1,
+        "color": {
+          "scheme": "Spectral",
+          "mode": "scheme",
+          "steps": 64
+        },
+        "yAxis": {
+          "unit": "s"
+        },
+        "tooltip": {
+          "mode": "single",
+          "yHistogram": false
+        },
+        "legend": {
+          "show": true
+        }
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "id": 24,
+      "gridPos": {
+        "x": 12,
+        "y": 75,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Live latency percentiles",
+      "description": "Estimated from histogram buckets on the server. Benchmark values above are measured on the client, so the two will not match exactly.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "1000 * histogram_quantile(0.5, sum by (le) (rate(http_server_requests_seconds_bucket{uri=~\"/api/.*\"}[30s])))",
+          "refId": "A",
+          "legendFormat": "REST p50",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "1000 * histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{uri=~\"/api/.*\"}[30s])))",
+          "refId": "B",
+          "legendFormat": "REST p95",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "1000 * histogram_quantile(0.99, sum by (le) (rate(http_server_requests_seconds_bucket{uri=~\"/api/.*\"}[30s])))",
+          "refId": "C",
+          "legendFormat": "REST p99",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "1000 * histogram_quantile(0.5, sum by (le) (rate(grpc_server_requests_seconds_bucket[30s])))",
+          "refId": "D",
+          "legendFormat": "gRPC p50",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "1000 * histogram_quantile(0.95, sum by (le) (rate(grpc_server_requests_seconds_bucket[30s])))",
+          "refId": "E",
+          "legendFormat": "gRPC p95",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "1000 * histogram_quantile(0.99, sum by (le) (rate(grpc_server_requests_seconds_bucket[30s])))",
+          "refId": "F",
+          "legendFormat": "gRPC p99",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "id": 25,
+      "gridPos": {
+        "x": 0,
+        "y": 83,
+        "w": 24,
+        "h": 8
+      }
+    },
+    {
+      "type": "row",
+      "title": "D. Payload and serialization",
+      "collapsed": false,
+      "panels": [],
+      "id": 26,
+      "gridPos": {
+        "x": 0,
+        "y": 91,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "type": "barchart",
+      "title": "Average response size",
+      "description": "Serialized body only. Headers, gRPC framing, HTTP/2 frames and TCP are excluded. Network bytes were not measured.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_join(benchmark_summary_response_bytes{run_id=~\"$run\",concurrency=~\"$concurrency\",operation=~\"$operation\",protocol=~\"$protocol\"}, \"series\", \" · \", \"scenario\", \"run_id\")",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "protocol",
+            "rowField": "series",
+            "valueField": "Value",
+            "emptyValue": "null"
+          }
+        }
+      ],
+      "options": {
+        "orientation": "vertical",
+        "xTickLabelRotation": -25,
+        "xTickLabelSpacing": 0,
+        "showValue": "auto",
+        "stacking": "none",
+        "groupWidth": 0.72,
+        "barWidth": 0.92,
+        "barRadius": 0.03,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "decimals": 0,
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "REST"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FF9830"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "gRPC"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794F2"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "id": 27,
+      "gridPos": {
+        "x": 0,
+        "y": 92,
+        "w": 16,
+        "h": 8
+      }
+    },
+    {
+      "type": "barchart",
+      "title": "Response size reduction",
+      "description": "Protobuf saves on field names and numbers. Text costs the same in both.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_join(benchmark_comparison_response_bytes_reduction_percent{run_id=~\"$run\",concurrency=~\"$concurrency\",operation=~\"$operation\"}, \"series\", \" · \", \"scenario\")",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "run_id",
+            "rowField": "series",
+            "valueField": "Value",
+            "emptyValue": "null"
+          }
+        }
+      ],
+      "options": {
+        "orientation": "vertical",
+        "xTickLabelRotation": -25,
+        "xTickLabelSpacing": 0,
+        "showValue": "auto",
+        "stacking": "none",
+        "groupWidth": 0.72,
+        "barWidth": 0.92,
+        "barRadius": 0.03,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0
+          }
+        },
+        "overrides": []
+      },
+      "id": 28,
+      "gridPos": {
+        "x": 16,
+        "y": 92,
+        "w": 8,
+        "h": 8
+      }
+    },
+    {
+      "type": "barchart",
+      "title": "Serialize time, JSON vs Protobuf",
+      "description": "Isolated timing loop with no network, server or database. Indicative only.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_join(benchmark_serialization_serialize_micros{run_id=~\"$run\"}, \"series\", \" · \", \"payload\", \"run_id\")",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "format",
+            "rowField": "series",
+            "valueField": "Value",
+            "emptyValue": "null"
+          }
+        }
+      ],
+      "options": {
+        "orientation": "vertical",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0,
+        "showValue": "auto",
+        "stacking": "none",
+        "groupWidth": 0.72,
+        "barWidth": 0.92,
+        "barRadius": 0.03,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "µs",
+          "decimals": 1,
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "JSON"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FF9830"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Protobuf"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794F2"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "id": 29,
+      "gridPos": {
+        "x": 0,
+        "y": 100,
+        "w": 8,
+        "h": 8
+      }
+    },
+    {
+      "type": "barchart",
+      "title": "Parse time, JSON vs Protobuf",
+      "description": "Isolated timing loop with no network, server or database. Indicative only.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_join(benchmark_serialization_parse_micros{run_id=~\"$run\"}, \"series\", \" · \", \"payload\", \"run_id\")",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "format",
+            "rowField": "series",
+            "valueField": "Value",
+            "emptyValue": "null"
+          }
+        }
+      ],
+      "options": {
+        "orientation": "vertical",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0,
+        "showValue": "auto",
+        "stacking": "none",
+        "groupWidth": 0.72,
+        "barWidth": 0.92,
+        "barRadius": 0.03,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "µs",
+          "decimals": 1,
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "JSON"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FF9830"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Protobuf"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794F2"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "id": 30,
+      "gridPos": {
+        "x": 8,
+        "y": 100,
+        "w": 8,
+        "h": 8
+      }
+    },
+    {
+      "type": "barchart",
+      "title": "Protobuf speedup over JSON",
+      "description": "How many times faster than JSON in the same timing loop.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_join(benchmark_serialization_speedup_ratio{run_id=~\"$run\"}, \"series\", \" · \", \"payload\", \"run_id\")",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "step",
+            "rowField": "series",
+            "valueField": "Value",
+            "emptyValue": "null"
+          }
+        }
+      ],
+      "options": {
+        "orientation": "vertical",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0,
+        "showValue": "auto",
+        "stacking": "none",
+        "groupWidth": 0.72,
+        "barWidth": 0.92,
+        "barRadius": 0.03,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: ×",
+          "decimals": 1,
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0
+          }
+        },
+        "overrides": []
+      },
+      "id": 31,
+      "gridPos": {
+        "x": 16,
+        "y": 100,
+        "w": 8,
+        "h": 8
+      }
+    },
+    {
+      "type": "text",
+      "title": "",
+      "transparent": true,
+      "options": {
+        "mode": "markdown",
+        "content": "### Reading these together\nProtobuf was about 3-5× faster to serialize and 4-9× faster to parse, yet that saves only microseconds. In the published analysis, it accounts for about 0.4-13% of the median latency gap in the two operations checked. That estimate is rough. The rest of the gap is unattributed between transport and framework."
+      },
+      "id": 32,
+      "gridPos": {
+        "x": 0,
+        "y": 108,
+        "w": 24,
+        "h": 3
+      }
+    },
+    {
+      "type": "row",
+      "title": "E. Reliability",
+      "collapsed": false,
+      "panels": [],
+      "id": 33,
+      "gridPos": {
+        "x": 0,
+        "y": 111,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Client-side failures",
+      "description": "Run 1. Writes the client recorded as failed after all retries.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "benchmark_incident_client_failures{run_id=\"run-1\"}",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No data",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#F2495C"
+          }
+        },
+        "overrides": []
+      },
+      "id": 34,
+      "gridPos": {
+        "x": 0,
+        "y": 112,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Committed despite failure",
+      "description": "Run 1. Found in idempotency_records before anything was resent.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "benchmark_incident_committed_despite_client_failure{run_id=\"run-1\"}",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No data",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#B877D9"
+          }
+        },
+        "overrides": []
+      },
+      "id": 35,
+      "gridPos": {
+        "x": 4,
+        "y": 112,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Retry attempts",
+      "description": "Run 1. Across both protocols in CreateComment with 64 clients.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "benchmark_incident_client_retries{run_id=\"run-1\"}",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No data",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#FF9830"
+          }
+        },
+        "overrides": []
+      },
+      "id": 36,
+      "gridPos": {
+        "x": 8,
+        "y": 112,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Resent from journal",
+      "description": "Run 1. Using the original idempotency keys.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "benchmark_incident_resent_from_journal{run_id=\"run-1\"}",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No data",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#5794F2"
+          }
+        },
+        "overrides": []
+      },
+      "id": 37,
+      "gridPos": {
+        "x": 12,
+        "y": 112,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "New rows after resend",
+      "description": "Run 1. 200 resent minus 143 already committed.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "benchmark_incident_new_rows_after_resend{run_id=\"run-1\"}",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No data",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#73BF69"
+          }
+        },
+        "overrides": []
+      },
+      "id": 38,
+      "gridPos": {
+        "x": 16,
+        "y": 112,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Duplicate rows",
+      "description": "Run 1. Row counts matched attempted writes exactly.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "benchmark_incident_duplicate_rows{run_id=\"run-1\"}",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "0",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#73BF69"
+          }
+        },
+        "overrides": []
+      },
+      "id": 39,
+      "gridPos": {
+        "x": 20,
+        "y": 112,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "text",
+      "title": "",
+      "transparent": true,
+      "options": {
+        "mode": "markdown",
+        "content": "### Run 1: database stall during CreateComment with 64 clients\n**Observed facts**\n- A slowdown crossed about four consecutive measured runs, on **both** protocols, then recovered.\n- The server logged connection pool timeouts, all within about 2 seconds.\n- The client saw 200 failures, all gRPC, because gRPC happened to run first when the stall began.\n- 143 of those 200 writes had already been committed by the server.\n- Resending all 200 with their original keys added exactly 57 comments, with no duplicates.\n\n**Suspected, not proven**\n- Autovacuum and a checkpoint were active around the stall. This is a correlation only.\n- The stall did not repeat in run 2."
+      },
+      "id": 40,
+      "gridPos": {
+        "x": 0,
+        "y": 116,
+        "w": 12,
+        "h": 11
+      }
+    },
+    {
+      "type": "barchart",
+      "title": "The stall, iteration by iteration",
+      "description": "Run 1, CreateComment with 64 clients. Both protocols dropped.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_join(benchmark_iteration_throughput_rps{run_id=\"run-1\",operation=\"CreateComment\",concurrency=\"64\"}, \"series\", \" · \", \"iteration\")",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "protocol",
+            "rowField": "series",
+            "valueField": "Value",
+            "emptyValue": "null"
+          }
+        }
+      ],
+      "options": {
+        "orientation": "vertical",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0,
+        "showValue": "auto",
+        "stacking": "none",
+        "groupWidth": 0.72,
+        "barWidth": 0.92,
+        "barRadius": 0.03,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: req/s",
+          "decimals": 0,
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "REST"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FF9830"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "gRPC"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794F2"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "id": 41,
+      "gridPos": {
+        "x": 12,
+        "y": 116,
+        "w": 12,
+        "h": 11
+      }
+    },
+    {
+      "type": "barchart",
+      "title": "Error rate",
+      "description": "Failed logical requests after retries.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_join(benchmark_summary_error_rate{run_id=~\"$run\",concurrency=~\"$concurrency\",operation=~\"$operation\",protocol=~\"$protocol\"}, \"series\", \" · \", \"scenario\", \"run_id\")",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "protocol",
+            "rowField": "series",
+            "valueField": "Value",
+            "emptyValue": "null"
+          }
+        }
+      ],
+      "options": {
+        "orientation": "vertical",
+        "xTickLabelRotation": -25,
+        "xTickLabelSpacing": 0,
+        "showValue": "auto",
+        "stacking": "none",
+        "groupWidth": 0.72,
+        "barWidth": 0.92,
+        "barRadius": 0.03,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0,
+            "axisSoftMax": 0.01
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "REST"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FF9830"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "gRPC"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794F2"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "id": 42,
+      "gridPos": {
+        "x": 0,
+        "y": 127,
+        "w": 8,
+        "h": 9
+      }
+    },
+    {
+      "type": "barchart",
+      "title": "Failed requests",
+      "description": "Total across iterations, for the selected runs.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_join(benchmark_summary_failures{run_id=~\"$run\",concurrency=~\"$concurrency\",operation=~\"$operation\",protocol=~\"$protocol\"}, \"series\", \" · \", \"scenario\", \"run_id\")",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "protocol",
+            "rowField": "series",
+            "valueField": "Value",
+            "emptyValue": "null"
+          }
+        }
+      ],
+      "options": {
+        "orientation": "vertical",
+        "xTickLabelRotation": -25,
+        "xTickLabelSpacing": 0,
+        "showValue": "auto",
+        "stacking": "none",
+        "groupWidth": 0.72,
+        "barWidth": 0.92,
+        "barRadius": 0.03,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0,
+            "axisSoftMax": 10
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "REST"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FF9830"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "gRPC"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794F2"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "id": 43,
+      "gridPos": {
+        "x": 8,
+        "y": 127,
+        "w": 8,
+        "h": 9
+      }
+    },
+    {
+      "type": "barchart",
+      "title": "Retry attempts",
+      "description": "Total across iterations, for the selected runs.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_join(benchmark_summary_retries{run_id=~\"$run\",concurrency=~\"$concurrency\",operation=~\"$operation\",protocol=~\"$protocol\"}, \"series\", \" · \", \"scenario\", \"run_id\")",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "protocol",
+            "rowField": "series",
+            "valueField": "Value",
+            "emptyValue": "null"
+          }
+        }
+      ],
+      "options": {
+        "orientation": "vertical",
+        "xTickLabelRotation": -25,
+        "xTickLabelSpacing": 0,
+        "showValue": "auto",
+        "stacking": "none",
+        "groupWidth": 0.72,
+        "barWidth": 0.92,
+        "barRadius": 0.03,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0,
+            "axisSoftMax": 10
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "REST"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FF9830"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "gRPC"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794F2"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "id": 44,
+      "gridPos": {
+        "x": 16,
+        "y": 127,
+        "w": 8,
+        "h": 9
+      }
+    },
+    {
+      "type": "text",
+      "title": "",
+      "transparent": true,
+      "options": {
+        "mode": "markdown",
+        "content": "### Not available\n**Successful retries:** the benchmark counts retry attempts, not which of them eventually succeeded, so this number was never measured.\n\n**Idempotency outcomes for runs 1 and 2:** live counters did not exist yet. The run 1 figures above were counted from the database and journal."
+      },
+      "id": 45,
+      "gridPos": {
+        "x": 0,
+        "y": 136,
+        "w": 8,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Live idempotency outcomes (per second)",
+      "description": "created: new resource. replayed: same key, stored result returned. conflict: same key, different data.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (outcome) (rate(blog_idempotency_outcomes_total[30s]))",
+          "refId": "A",
+          "legendFormat": "{{outcome}}",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "id": 46,
+      "gridPos": {
+        "x": 8,
+        "y": 136,
+        "w": 8,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Live error rate",
+      "description": "Failed requests per second, seen by the server.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/.*\",outcome!=\"SUCCESS\"}[30s])) or vector(0)",
+          "refId": "A",
+          "legendFormat": "REST",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(grpc_server_requests_seconds_count{outcome=\"ERROR\"}[30s])) or vector(0)",
+          "refId": "B",
+          "legendFormat": "gRPC",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "decimals": 2,
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "REST"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FF9830"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "gRPC"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794F2"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "id": 47,
+      "gridPos": {
+        "x": 16,
+        "y": 136,
+        "w": 8,
+        "h": 8
+      }
+    },
+    {
+      "type": "row",
+      "title": "Live traffic by endpoint and status",
+      "collapsed": false,
+      "panels": [],
+      "id": 48,
+      "gridPos": {
+        "x": 0,
+        "y": 144,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Live REST requests by endpoint",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (method, uri) (rate(http_server_requests_seconds_count{uri=~\"/api/.*\"}[30s]))",
+          "refId": "A",
+          "legendFormat": "{{method}} {{uri}}",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "id": 49,
+      "gridPos": {
+        "x": 0,
+        "y": 145,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Live gRPC calls by method",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (method) (rate(grpc_server_requests_seconds_count[30s]))",
+          "refId": "A",
+          "legendFormat": "{{method}}",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "id": 50,
+      "gridPos": {
+        "x": 12,
+        "y": 145,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Live HTTP status codes",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (status) (rate(http_server_requests_seconds_count{uri=~\"/api/.*\"}[30s]))",
+          "refId": "A",
+          "legendFormat": "{{status}}",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "id": 51,
+      "gridPos": {
+        "x": 0,
+        "y": 153,
+        "w": 12,
+        "h": 7
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Live gRPC status codes",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (status) (rate(grpc_server_requests_seconds_count[30s]))",
+          "refId": "A",
+          "legendFormat": "{{status}}",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "id": 52,
+      "gridPos": {
+        "x": 12,
+        "y": 153,
+        "w": 12,
+        "h": 7
+      }
+    },
+    {
+      "type": "row",
+      "title": "F. Infrastructure",
+      "collapsed": false,
+      "panels": [],
+      "id": 53,
+      "gridPos": {
+        "x": 0,
+        "y": 160,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "type": "text",
+      "title": "",
+      "transparent": true,
+      "options": {
+        "mode": "markdown",
+        "content": "These panels show the application and database **now**. Use them during a benchmark to tell a protocol difference from a bottleneck such as a saturated connection pool, garbage collection or full CPU."
+      },
+      "id": 54,
+      "gridPos": {
+        "x": 0,
+        "y": 161,
+        "w": 24,
+        "h": 2
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "JVM heap",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(jvm_memory_used_bytes{area=\"heap\"})",
+          "refId": "A",
+          "legendFormat": "used",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(jvm_memory_committed_bytes{area=\"heap\"})",
+          "refId": "B",
+          "legendFormat": "committed",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "id": 55,
+      "gridPos": {
+        "x": 0,
+        "y": 163,
+        "w": 8,
+        "h": 7
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "JVM non-heap",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(jvm_memory_used_bytes{area=\"nonheap\"})",
+          "refId": "A",
+          "legendFormat": "used",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "id": 56,
+      "gridPos": {
+        "x": 8,
+        "y": 163,
+        "w": 8,
+        "h": 7
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "CPU usage",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "process_cpu_usage",
+          "refId": "A",
+          "legendFormat": "application",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "system_cpu_usage",
+          "refId": "B",
+          "legendFormat": "whole machine",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "decimals": 0,
+          "min": 0
+        },
+        "overrides": []
+      },
+      "id": 57,
+      "gridPos": {
+        "x": 16,
+        "y": 163,
+        "w": 8,
+        "h": 7
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Garbage collection pauses per second",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(jvm_gc_pause_seconds_count[1m])) or vector(0)",
+          "refId": "A",
+          "legendFormat": "collections",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "id": 58,
+      "gridPos": {
+        "x": 0,
+        "y": 170,
+        "w": 8,
+        "h": 7
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Time paused in garbage collection",
+      "description": "Share of time the JVM was paused.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(jvm_gc_pause_seconds_sum[1m])) or vector(0)",
+          "refId": "A",
+          "legendFormat": "paused",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "id": 59,
+      "gridPos": {
+        "x": 8,
+        "y": 170,
+        "w": 8,
+        "h": 7
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "JVM threads",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "jvm_threads_live_threads",
+          "refId": "A",
+          "legendFormat": "live",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "id": 60,
+      "gridPos": {
+        "x": 16,
+        "y": 170,
+        "w": 4,
+        "h": 7
+      }
+    },
+    {
+      "type": "stat",
+      "title": "JVM uptime",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "process_uptime_seconds",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "noValue": "Application not running",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#B877D9"
+          }
+        },
+        "overrides": []
+      },
+      "id": 61,
+      "gridPos": {
+        "x": 20,
+        "y": 170,
+        "w": 4,
+        "h": 7
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Application connection pool",
+      "description": "Waiting above zero means the pool is the bottleneck.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "hikaricp_connections_active",
+          "refId": "A",
+          "legendFormat": "active",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "hikaricp_connections_idle",
+          "refId": "B",
+          "legendFormat": "idle",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "hikaricp_connections_pending",
+          "refId": "C",
+          "legendFormat": "waiting",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "id": 62,
+      "gridPos": {
+        "x": 0,
+        "y": 177,
+        "w": 8,
+        "h": 7
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "PostgreSQL connections",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (state) (pg_stat_activity_count{datname=\"blog\"})",
+          "refId": "A",
+          "legendFormat": "{{state}}",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "id": 63,
+      "gridPos": {
+        "x": 8,
+        "y": 177,
+        "w": 8,
+        "h": 7
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "PostgreSQL transactions per second",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(pg_stat_database_xact_commit{datname=\"blog\"}[1m])",
+          "refId": "A",
+          "legendFormat": "commits",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(pg_stat_database_xact_rollback{datname=\"blog\"}[1m])",
+          "refId": "B",
+          "legendFormat": "rollbacks",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "id": 64,
+      "gridPos": {
+        "x": 16,
+        "y": 177,
+        "w": 8,
+        "h": 7
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "PostgreSQL cache hit ratio",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(pg_stat_database_blks_hit{datname=\"blog\"}[1m]) / (rate(pg_stat_database_blks_hit{datname=\"blog\"}[1m]) + rate(pg_stat_database_blks_read{datname=\"blog\"}[1m]))",
+          "refId": "A",
+          "legendFormat": "hit ratio",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "id": 65,
+      "gridPos": {
+        "x": 0,
+        "y": 184,
+        "w": 8,
+        "h": 7
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "PostgreSQL rows",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(pg_stat_database_tup_fetched{datname=\"blog\"}[1m])",
+          "refId": "A",
+          "legendFormat": "fetched",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(pg_stat_database_tup_inserted{datname=\"blog\"}[1m])",
+          "refId": "B",
+          "legendFormat": "inserted",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(pg_stat_database_tup_updated{datname=\"blog\"}[1m])",
+          "refId": "C",
+          "legendFormat": "updated",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "id": 66,
+      "gridPos": {
+        "x": 8,
+        "y": 184,
+        "w": 8,
+        "h": 7
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "PostgreSQL locks by mode",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (mode) (pg_locks_count{datname=\"blog\"})",
+          "refId": "A",
+          "legendFormat": "{{mode}}",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "id": 67,
+      "gridPos": {
+        "x": 16,
+        "y": 184,
+        "w": 8,
+        "h": 7
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Database size",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "pg_database_size_bytes{datname=\"blog\"}",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "decimals": 1,
+          "noValue": "No data",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#B877D9"
+          }
+        },
+        "overrides": []
+      },
+      "id": 68,
+      "gridPos": {
+        "x": 0,
+        "y": 191,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Deadlocks",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "pg_stat_database_deadlocks{datname=\"blog\"}",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No data",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#73BF69"
+          }
+        },
+        "overrides": []
+      },
+      "id": 69,
+      "gridPos": {
+        "x": 4,
+        "y": 191,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Containers running",
+      "description": "Containers cAdvisor saw in the last 30 seconds.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "count(time() - container_last_seen{name=~\"blog-platform-.*\"} < 30)",
+          "refId": "A",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No data",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#73BF69"
+          }
+        },
+        "overrides": []
+      },
+      "id": 70,
+      "gridPos": {
+        "x": 8,
+        "y": 191,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "text",
+      "title": "",
+      "transparent": true,
+      "options": {
+        "mode": "markdown",
+        "content": "**Query performance: unavailable.** Per-query statistics need the `pg_stat_statements` extension, which requires restarting PostgreSQL with a changed configuration. It was left off to keep the benchmark database unchanged."
+      },
+      "id": 71,
+      "gridPos": {
+        "x": 12,
+        "y": 191,
+        "w": 12,
+        "h": 4
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Container CPU (cores)",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (name) (rate(container_cpu_usage_seconds_total{name=~\"blog-platform-.*\"}[1m]))",
+          "refId": "A",
+          "legendFormat": "{{name}}",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "id": 72,
+      "gridPos": {
+        "x": 0,
+        "y": 195,
+        "w": 8,
+        "h": 7
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Container memory",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (name) (container_memory_working_set_bytes{name=~\"blog-platform-.*\"})",
+          "refId": "A",
+          "legendFormat": "{{name}}",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "id": 73,
+      "gridPos": {
+        "x": 8,
+        "y": 195,
+        "w": 8,
+        "h": 7
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Container network received",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (name) (rate(container_network_receive_bytes_total{name=~\"blog-platform-.*\"}[1m]))",
+          "refId": "A",
+          "legendFormat": "{{name}}",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "id": 74,
+      "gridPos": {
+        "x": 16,
+        "y": 195,
+        "w": 8,
+        "h": 7
+      }
+    }
+  ]
+}

@@ -2,6 +2,9 @@ package kz.kbtu.blog.benchmark;
 
 import java.nio.file.Path;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -10,6 +13,8 @@ import kz.kbtu.blog.client.RetryPolicy;
 
 /** Settings for one benchmark, read from arguments such as --requests=20000. */
 public record BenchmarkConfig(
+        String runId,
+        String label,
         int readRequests,
         int writeRequests,
         List<Integer> concurrencyLevels,
@@ -26,7 +31,12 @@ public record BenchmarkConfig(
         String dbUser,
         String dbPassword,
         Path outputDirectory,
+        Path journalFile,
         RetryPolicy retryPolicy) {
+
+    private static final Path RESULTS_ROOT = Path.of("benchmark-results");
+    private static final DateTimeFormatter RUN_ID_TIME =
+            DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").withZone(ZoneOffset.UTC);
 
     public static BenchmarkConfig parse(String... args) {
         Map<String, String> values = new HashMap<>();
@@ -46,7 +56,18 @@ public record BenchmarkConfig(
                 defaults.baseBackoff(),
                 defaults.maxBackoff());
 
+        String runId = values.getOrDefault("run-id", "run-" + RUN_ID_TIME.format(Instant.now()));
+        if (!runId.matches("[A-Za-z0-9._-]+")) {
+            throw new IllegalArgumentException("run-id may only use letters, digits, '.', '_' and '-': " + runId);
+        }
+        // By default every run gets its own folder, and unfinished writes are tracked across runs.
+        boolean customOutput = values.containsKey("output");
+        Path output = customOutput ? Path.of(values.get("output")) : RESULTS_ROOT.resolve(runId);
+        Path journal = (customOutput ? output : RESULTS_ROOT).resolve("pending-operations.log");
+
         BenchmarkConfig config = new BenchmarkConfig(
+                runId,
+                values.getOrDefault("label", ""),
                 intValue(values, "requests", 20_000),
                 intValue(values, "write-requests", 5_000),
                 Arrays.stream(values.getOrDefault("concurrency", "16,64").split(","))
@@ -63,7 +84,8 @@ public record BenchmarkConfig(
                 values.getOrDefault("db-url", "jdbc:postgresql://localhost:5432/blog"),
                 values.getOrDefault("db-user", "blog"),
                 values.getOrDefault("db-password", "blog"),
-                Path.of(values.getOrDefault("output", "benchmark-results")),
+                output,
+                journal,
                 policy);
         values.keySet().removeAll(KNOWN_OPTIONS);
         if (!values.isEmpty()) {
@@ -73,7 +95,7 @@ public record BenchmarkConfig(
     }
 
     private static final List<String> KNOWN_OPTIONS = List.of(
-            "requests", "write-requests", "concurrency", "warmup", "prewarm-passes", "iterations", "sample-size",
+            "run-id", "label", "requests", "write-requests", "concurrency", "warmup", "prewarm-passes", "iterations", "sample-size",
             "page-limit", "seed", "rest-url", "grpc-host", "grpc-port", "db-url", "db-user", "db-password",
             "output", "max-attempts", "attempt-timeout-ms", "overall-timeout-ms");
 

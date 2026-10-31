@@ -1,0 +1,13 @@
+{
+  "title" : "Database stall during CreateComment with 64 clients",
+  "observed" : {
+    "client_failures" : 200,
+    "client_retries" : 618,
+    "committed_despite_client_failure" : 143,
+    "resent_from_journal" : 200,
+    "new_rows_after_resend" : 57,
+    "duplicate_rows" : 0
+  },
+  "suspected_cause" : "Autovacuum and a checkpoint were active around the stall. This is a correlation, not a proven cause.",
+  "source" : "Counted from pending-operations.log, idempotency_records and comments before and after recovery. See ../analysis.md."
+}

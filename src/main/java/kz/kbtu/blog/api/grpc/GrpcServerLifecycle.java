@@ -24,6 +24,7 @@ public class GrpcServerLifecycle implements SmartLifecycle {
 
     private final BlogGrpcService blogService;
     private final UserIdInterceptor userIdInterceptor;
+    private final GrpcMetricsInterceptor metricsInterceptor;
     private final int configuredPort;
     private final int threads;
 
@@ -33,10 +34,12 @@ public class GrpcServerLifecycle implements SmartLifecycle {
     public GrpcServerLifecycle(
             BlogGrpcService blogService,
             UserIdInterceptor userIdInterceptor,
+            GrpcMetricsInterceptor metricsInterceptor,
             @Value("${grpc.server.port}") int configuredPort,
             @Value("${grpc.server.threads}") int threads) {
         this.blogService = blogService;
         this.userIdInterceptor = userIdInterceptor;
+        this.metricsInterceptor = metricsInterceptor;
         this.configuredPort = configuredPort;
         this.threads = threads;
     }
@@ -48,7 +51,8 @@ public class GrpcServerLifecycle implements SmartLifecycle {
         try {
             server = NettyServerBuilder.forPort(configuredPort)
                     .executor(executor)
-                    .addService(ServerInterceptors.intercept(blogService, userIdInterceptor))
+                    // The last interceptor runs first, so the timer covers everything else.
+                    .addService(ServerInterceptors.intercept(blogService, userIdInterceptor, metricsInterceptor))
                     // Lets tools such as grpcurl discover the API without the .proto file.
                     .addService(ProtoReflectionServiceV1.newInstance())
                     .build()

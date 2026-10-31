@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -34,7 +35,9 @@ final class ResultStore implements AutoCloseable {
 
     ResultStore(Path directory) throws IOException {
         Files.createDirectories(directory);
-        csv = Files.newBufferedWriter(directory.resolve("raw-runs.csv"), StandardCharsets.UTF_8);
+        // CREATE_NEW fails if the file exists: finished results must never be overwritten.
+        csv = Files.newBufferedWriter(directory.resolve("raw-runs.csv"), StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
         csv.write(HEADER);
         csv.newLine();
     }

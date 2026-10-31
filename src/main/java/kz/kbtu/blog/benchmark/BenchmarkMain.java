@@ -38,10 +38,9 @@ public final class BenchmarkMain {
     private void run() throws Exception {
         String startedAt = Instant.now().toString();
         BenchmarkDataset dataset = BenchmarkDataset.load(config);
-        log("Dataset: %d posts, %d comments", dataset.postCount(), dataset.commentCount());
+        log("Run %s. Dataset: %d posts, %d comments", config.runId(), dataset.postCount(), dataset.commentCount());
 
-        try (PendingOperationJournal journal = new PendingOperationJournal(
-                        config.outputDirectory().resolve("pending-operations.log"));
+        try (PendingOperationJournal journal = new PendingOperationJournal(config.journalFile());
                 ResultStore results = new ResultStore(config.outputDirectory());
                 BlogClient rest = new RestBlogClient(config.restUrl(), config.retryPolicy());
                 BlogClient grpc = new GrpcBlogClient(config.grpcHost(), config.grpcPort(), config.retryPolicy())) {
@@ -68,6 +67,7 @@ public final class BenchmarkMain {
             Environment environment = new Environment(startedAt, Instant.now().toString(),
                     System.getProperty("java.version"), Runtime.getRuntime().availableProcessors(), dataset);
             new SummaryReport(config, results.rows(), probe, environment).write(config.outputDirectory());
+            RunMetadata.of(config, environment).write(config.outputDirectory());
             log("Done. Results are in %s", config.outputDirectory().toAbsolutePath());
         }
     }

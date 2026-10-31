@@ -1,0 +1,19 @@
+{
+  "run_id" : "smoke-1",
+  "label" : "Small smoke test, not a performance result",
+  "started_at" : "2026-10-31T06:51:02.215118900Z",
+  "finished_at" : "2026-10-31T06:51:59.678687300Z",
+  "users" : 1003,
+  "posts" : 1229600,
+  "comments" : 3229600,
+  "read_requests" : 2000,
+  "write_requests" : 200,
+  "warmup_requests" : 200,
+  "iterations" : 2,
+  "concurrency_levels" : [ 16 ],
+  "sample_size" : 500,
+  "seed" : 42,
+  "page_limit" : 20,
+  "java_version" : "21.0.9",
+  "cores" : 8
+}

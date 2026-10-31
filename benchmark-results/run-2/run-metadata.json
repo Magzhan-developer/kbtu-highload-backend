@@ -1,0 +1,19 @@
+{
+  "run_id" : "run-2",
+  "label" : "Full run. No failures or retries",
+  "started_at" : "2026-10-31T05:44:48.720648700Z",
+  "finished_at" : "2026-10-31T05:55:19.337147300Z",
+  "users" : 1003,
+  "posts" : 1117600,
+  "comments" : 3117600,
+  "read_requests" : 20000,
+  "write_requests" : 5000,
+  "warmup_requests" : 2000,
+  "iterations" : 4,
+  "concurrency_levels" : [ 16, 64 ],
+  "sample_size" : 5000,
+  "seed" : 42,
+  "page_limit" : 20,
+  "java_version" : "21.0.9",
+  "cores" : 8
+}

@@ -27,6 +27,7 @@ comparisons. Serialization alone accounts for only a small part of that gap. See
 12. [Benchmark results](#12-benchmark-results)
 13. [Analysis of gRPC vs REST](#13-analysis-of-grpc-vs-rest)
 14. [Limitations and improvements](#14-limitations-and-improvements)
+15. [Monitoring with Prometheus and Grafana](#15-monitoring-with-prometheus-and-grafana)
 
 ## 1. Project overview
 
@@ -82,6 +83,7 @@ src/main/java/kz/kbtu/blog/
 src/main/resources/db/migration/     Flyway migrations
 scripts/seed-dataset.sql             Large dataset generator
 benchmark-results/                   Measurements and analysis
+monitoring/                          Prometheus, Grafana and the benchmark results exporter
 ```
 
 The rule that keeps the comparison fair is that **`api/` only translates**. Controllers and the gRPC service
@@ -358,12 +360,15 @@ The script adds rows on every run. To start again, use `docker compose down -v`.
 ```powershell
 & "$env:JAVA_HOME\bin\java.exe" '-Dloader.main=kz.kbtu.blog.benchmark.BenchmarkMain' `
     -jar target\blog-platform-0.1.0-SNAPSHOT.jar `
-    --requests=20000 --write-requests=5000 --concurrency=16,64 --warmup=2000 --iterations=4 `
-    --output=benchmark-results/run-3
+    --run-id=run-3 --requests=20000 --write-requests=5000 --concurrency=16,64 --warmup=2000 --iterations=4
 ```
+
+Each run gets its own folder, `benchmark-results/<run-id>`, and the benchmark refuses to overwrite existing results.
 
 | Option | Default | Meaning |
 |---|---|---|
+| `--run-id` | `run-<UTC time>` | Unique run name, used for the folder and in Grafana |
+| `--label` | Empty | A short note shown in Grafana |
 | `--requests` | 20000 | Reads per run |
 | `--write-requests` | 5000 | Writes per run |
 | `--concurrency` | 16,64 | Concurrent clients, comma-separated |
@@ -376,13 +381,14 @@ The script adds rows on every run. To start again, use `docker compose down -v`.
 | `--max-attempts` | 3 | Retry attempts |
 | `--attempt-timeout-ms` | 500 | Timeout per attempt |
 | `--overall-timeout-ms` | 1500 | Overall limit |
-| `--output` | `benchmark-results` | Output folder |
+| `--output` | `benchmark-results/<run-id>` | Output folder |
 
 Connection options are `--rest-url`, `--grpc-host`, `--grpc-port`, `--db-url`, `--db-user` and `--db-password`.
 
 A full run takes about 12 minutes. Keep the laptop on AC power and idle: a standby invalidated one attempt here.
 
-Each run writes `raw-runs.csv` (updated as it goes), `summary.csv`, `summary.md` and `serialization-probe.csv`.
+Each run writes `raw-runs.csv` (updated as it goes), `summary.csv`, `summary.md`, `serialization-probe.csv` and
+`run-metadata.json`.
 
 ## 11. Benchmark methodology
 
@@ -503,3 +509,137 @@ much as its speed. REST remains easier to inspect and use from a browser.
 - Use a fixed-rate load generator, and test a mixed workload at 5 million posts.
 - Capture real network bytes with a packet capture.
 - Log autovacuum during runs, to investigate the stall.
+
+## 15. Monitoring with Prometheus and Grafana
+
+Grafana shows the measured benchmark results next to live application and database metrics. The dashboard is
+**Blog Platform — REST vs gRPC Performance Benchmark**.
+
+```mermaid
+flowchart LR
+    B[Benchmark runner] -->|writes| F[(benchmark-results CSV and JSON)]
+    F -->|read-only mount| E[benchmark-exporter :9188]
+    A[Application REST :8080, gRPC :9090] -->|/actuator/prometheus| P[Prometheus :9091]
+    PG[(PostgreSQL)] --> X[postgres-exporter :9187]
+    C[cAdvisor :8081] --> P
+    X --> P
+    E --> P
+    P --> G[Grafana :3000]
+```
+
+| Component | Port on host | Purpose |
+|---|---|---|
+| Application | 8080 REST, 9090 gRPC | Runs on the host. Exposes `/actuator/prometheus` |
+| Prometheus | 9091 | Stores time series. The host's 9090 is taken by gRPC |
+| Grafana | 3000 | Dashboards |
+| postgres-exporter | 9187 | PostgreSQL statistics |
+| benchmark-exporter | 9188 | Publishes the result files as metrics |
+| cAdvisor | 8081 | Docker container resources |
+
+The monitoring services use a Compose profile, so a plain `docker compose up` still starts PostgreSQL alone. They
+use no extra database, and PostgreSQL is not restarted or changed.
+
+### Start everything
+
+```powershell
+$env:JAVA_HOME = "C:\path\to\jdk-21"
+
+# 1. PostgreSQL and the monitoring stack
+docker compose --profile monitoring up -d
+
+# 2. The application, in its own terminal
+.\mvnw.cmd -DskipTests package
+& "$env:JAVA_HOME\bin\java.exe" -Xmx2g -jar target\blog-platform-0.1.0-SNAPSHOT.jar
+```
+
+| Open | Address | Login |
+|---|---|---|
+| Grafana | <http://localhost:3000> | None needed to view. Admin: `admin` / `admin` |
+| Prometheus | <http://localhost:9091> | None |
+| Prometheus targets | <http://localhost:9091/targets> | None |
+
+Change the admin password outside development by setting `GRAFANA_ADMIN_PASSWORD` before starting. Anonymous viewing
+is on for convenience, so do not expose this setup to a network.
+
+To stop the monitoring services and keep all data:
+
+```powershell
+docker compose --profile monitoring stop
+```
+
+> **Warning:** `docker compose down -v` deletes the volumes, **including the benchmark database**.
+
+### How benchmark results reach Grafana
+
+1. The benchmark writes its files to `benchmark-results/<run-id>/`. These stay the source of truth.
+2. `benchmark-exporter` reads every run folder on each scrape, through a read-only mount, and publishes the values.
+3. Prometheus scrapes them, and Grafana queries Prometheus.
+
+A new run appears within about 15 seconds of finishing, with no restart. An unfinished run is skipped. If Prometheus
+data were deleted, the values would return on the next scrape, because Prometheus only holds a copy. Results are
+stored per operation, not per request, so each run adds a few hundred series.
+
+### Run a new benchmark and compare it
+
+Use the benchmark command from [section 10](#10-running-the-benchmarks). Then, in Grafana:
+
+| Variable | Use |
+|---|---|
+| **Run** | Select several runs to compare them, such as `run-1` and `run-2` |
+| **Clients** | 16, 64 or both |
+| **Operation** | GetPost, GetAuthorPosts, GetComments, CreatePost, CreateComment |
+| **Protocol** | REST, gRPC or both |
+| **Focus operation** | The single operation used by the client-count and iteration charts |
+
+`smoke-1` is a small validation run, labelled as such. It is not a performance result, so do not compare it with full runs.
+
+### Dashboard panels
+
+| Section | Panels | How to read them |
+|---|---|---|
+| A. Executive overview | Run details table, throughput, p99, improvement, payload reduction | Stats are means of the selected medians, so they mix fast and slow operations. Use the charts for detail |
+| B. Throughput | By operation, 16 vs 64 clients, every iteration, live RPS, gain per run | Compare the iteration spread with the gap between protocols before trusting a difference |
+| C. Latency | p50, p95 and p99 by operation, reductions, live heatmaps, live percentiles | Positive reduction favours gRPC. Negative p99 bars are real results |
+| D. Payload and serialization | Response size, serialize and parse time, Protobuf speedup | Sizes exclude headers and framing. Serialization numbers come from an isolated loop |
+| E. Reliability | Run 1 incident, stall by iteration, error rate, failures, retries, live idempotency outcomes | Observed facts and suspected causes are shown separately |
+| Live traffic | REST by endpoint, gRPC by method, status codes | Empty when nothing is running |
+| F. Infrastructure | Heap, non-heap, CPU, GC, threads, uptime, connection pool, PostgreSQL, containers | Use during a run to spot bottlenecks such as a waiting connection pool |
+
+### Metrics collected
+
+| Source | Metrics |
+|---|---|
+| REST | `http_server_requests_seconds`: count, duration and histogram, by URI, method and status |
+| gRPC | `grpc_server_requests_seconds`: the same, by method and status, from [GrpcMetricsInterceptor](src/main/java/kz/kbtu/blog/api/grpc/GrpcMetricsInterceptor.java) |
+| Idempotency | `blog_idempotency_outcomes_total`: `created`, `replayed`, `conflict` |
+| JVM | Heap, non-heap, GC, CPU, threads, uptime, connection pool |
+| PostgreSQL | Connections by state, transactions, cache hit ratio, rows, locks, deadlocks, database size |
+| Docker | CPU, memory, network, containers running |
+| Benchmark | `benchmark_summary_*`, `benchmark_iteration_*`, `benchmark_comparison_*`, `benchmark_serialization_*`, `benchmark_run_*`, `benchmark_incident_*` |
+
+REST and gRPC use the same histogram settings, 1 ms to 10 s, and both timers run on the server from receiving a
+call to finishing the response.
+
+### Limitations of the metrics
+
+- **Live charts cannot show runs 1 and 2.** Those runs finished before the application was instrumented. Their
+  results come from the CSV files, so they appear in the benchmark charts but not the live ones.
+- **Unavailable, and not estimated:** latency distributions for runs 1 and 2, successful retries, per-query PostgreSQL
+  statistics (these need `pg_stat_statements`, which requires restarting PostgreSQL) and total network bytes.
+- **Live and benchmark numbers differ.** Benchmark latency is measured on the client and includes retries. Live latency
+  is estimated on the server from histogram buckets.
+- **Timestamps in benchmark panels are scrape times,** not when the run happened. The run's real time is in the table.
+- **Run 1's incident figures** were counted from the database and journal, and saved in
+  [run-1/incident.json](benchmark-results/run-1/incident.json). The benchmark did not produce them automatically.
+- **Instrumentation and scraping add a small cost,** which runs 1 and 2 did not have. New runs may therefore not be
+  directly comparable with them. Compare REST and gRPC within one run.
+- **A stuck gRPC call is recorded when its handler finishes,** not when the client gives up.
+
+The dashboard is generated by [generate_dashboard.py](monitoring/grafana/generate_dashboard.py). Change that file and
+run it, because Grafana does not save edits to a provisioned dashboard.
+
+To test the exporter:
+
+```powershell
+python -m unittest discover -s monitoring/benchmark-exporter
+```

@@ -1,0 +1,19 @@
+{
+  "run_id" : "run-1",
+  "label" : "Full run. Database stall near the end",
+  "started_at" : "2026-10-31T05:04:07.176476600Z",
+  "finished_at" : "2026-10-31T05:16:09.901140800Z",
+  "users" : 1003,
+  "posts" : 1005600,
+  "comments" : 3005600,
+  "read_requests" : 20000,
+  "write_requests" : 5000,
+  "warmup_requests" : 2000,
+  "iterations" : 4,
+  "concurrency_levels" : [ 16, 64 ],
+  "sample_size" : 5000,
+  "seed" : 42,
+  "page_limit" : 20,
+  "java_version" : "21.0.9",
+  "cores" : 8
+}

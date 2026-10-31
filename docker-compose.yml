@@ -21,5 +21,81 @@ services:
       timeout: 3s
       retries: 30
 
+  # Everything below starts only with: docker compose --profile monitoring up -d
+  # A plain "docker compose up" still starts PostgreSQL alone.
+  prometheus:
+    profiles: [monitoring]
+    image: prom/prometheus:v3.13.4
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.size=1GB
+    ports:
+      - "9091:9090" # The host's 9090 is taken by the application's gRPC server.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+
+  grafana:
+    profiles: [monitoring]
+    image: grafana/grafana:12.0.2
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      # Development convenience: dashboards can be viewed without logging in.
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/rest-vs-grpc.json
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+
+  postgres-exporter:
+    profiles: [monitoring]
+    image: prometheuscommunity/postgres-exporter:v0.20.1
+    environment:
+      DATA_SOURCE_URI: postgres:5432/blog?sslmode=disable
+      DATA_SOURCE_USER: blog
+      DATA_SOURCE_PASS: blog
+    ports:
+      - "9187:9187"
+    depends_on:
+      - postgres
+
+  # Serves benchmark-results as metrics. The mount is read-only, so it cannot change them.
+  benchmark-exporter:
+    profiles: [monitoring]
+    image: python:3.13-alpine
+    command: ["python", "/app/exporter.py"]
+    ports:
+      - "9188:9188"
+    volumes:
+      - ./monitoring/benchmark-exporter/exporter.py:/app/exporter.py:ro
+      - ./benchmark-results:/results:ro
+
+  cadvisor:
+    profiles: [monitoring]
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    privileged: true
+    command: ["--docker_only=true", "--housekeeping_interval=5s"]
+    ports:
+      - "8081:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+
 volumes:
   postgres-data:
+  prometheus-data:
+  grafana-data:

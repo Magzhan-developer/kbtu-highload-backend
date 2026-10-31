@@ -2,6 +2,8 @@ package kz.kbtu.blog.application;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.util.UUID;
 import java.util.function.Supplier;
 import kz.kbtu.blog.domain.IdempotencyRecord;
@@ -10,6 +12,8 @@ import kz.kbtu.blog.persistence.IdempotencyRecordRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Runs a create operation at most once per key.
@@ -26,10 +30,23 @@ class IdempotencyService {
 
     private final IdempotencyRecordRepository records;
     private final ObjectMapper objectMapper;
+    private final Counter created;
+    private final Counter replayed;
+    private final Counter conflicts;
 
-    IdempotencyService(IdempotencyRecordRepository records, ObjectMapper objectMapper) {
+    IdempotencyService(IdempotencyRecordRepository records, ObjectMapper objectMapper, MeterRegistry registry) {
         this.records = records;
         this.objectMapper = objectMapper;
+        this.created = outcomeCounter(registry, "created");
+        this.replayed = outcomeCounter(registry, "replayed");
+        this.conflicts = outcomeCounter(registry, "conflict");
+    }
+
+    private static Counter outcomeCounter(MeterRegistry registry, String outcome) {
+        return Counter.builder("blog.idempotency.outcomes")
+                .description("Result of idempotent create requests")
+                .tag("outcome", outcome)
+                .register(registry);
     }
 
     /** MANDATORY: without the caller's transaction, the atomicity above would not hold. */
@@ -47,7 +64,18 @@ class IdempotencyService {
         }
         T result = action.get();
         records.complete(userId, operation.name(), key, toJson(result), RESPONSE_STATUS_CREATED);
+        countAfterCommit(created);
         return result;
+    }
+
+    // Counting earlier would include creates that later roll back.
+    private static void countAfterCommit(Counter counter) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                counter.increment();
+            }
+        });
     }
 
     /**
@@ -60,8 +88,10 @@ class IdempotencyService {
                 .findByUserIdAndOperationTypeAndIdempotencyKey(userId, operation.name(), key)
                 .orElseThrow(() -> new IllegalStateException("claimed idempotency record not found"));
         if (!record.getRequestHash().equals(requestHash)) {
+            conflicts.increment();
             throw new IdempotencyConflictException("idempotency key was already used with different request data");
         }
+        replayed.increment();
         return fromJson(record.getResponseBody(), resultType);
     }
 
